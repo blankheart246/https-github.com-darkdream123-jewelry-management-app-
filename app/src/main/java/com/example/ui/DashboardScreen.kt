@@ -48,6 +48,9 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.Customer
 import com.example.data.InventoryItem
 import com.example.data.Transaction
+import com.example.util.GoogleSignInHelper
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.firebase.auth.FirebaseUser
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.text.SimpleDateFormat
@@ -92,6 +95,25 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
 
     val isOffline by viewModel.isOffline.collectAsState()
     val isDark by viewModel.isDarkMode.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val isSyncing by viewModel.syncing.collectAsState()
+
+    val context = LocalContext.current
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
+            account?.idToken?.let { idToken ->
+                viewModel.signInWithFirebase(idToken) { success ->
+                    // Handle success/failure if needed
+                }
+            }
+        } catch (e: Exception) {
+            // Handle error
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -175,6 +197,51 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                         IconButton(onClick = { showGlobalSearchDialog = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Global Search", tint = Color(0xFF7D5800))
                         }
+                        
+                        if (currentUser != null) {
+                            IconButton(onClick = { viewModel.syncDataToFirestore() }) {
+                                Icon(
+                                    imageVector = if (isSyncing) Icons.Default.Sync else Icons.Default.CloudUpload,
+                                    contentDescription = "Sync Data",
+                                    tint = if (isSyncing) Color(0xFF7D5800) else Color.Gray
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                if (currentUser == null) {
+                                    val client = GoogleSignInHelper.getGoogleSignInClient(context)
+                                    googleSignInLauncher.launch(client.signInIntent)
+                                } else {
+                                    viewModel.signOut()
+                                }
+                            },
+                        ) {
+                            if (currentUser != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFE8DEF8)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = currentUser?.displayName?.take(1) ?: "U",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF6750A4)
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Login",
+                                    tint = Color(0xFF7D5800)
+                                )
+                            }
+                        }
+
                         IconButton(onClick = { showSettingsDialog = true }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color(0xFF7D5800))
                         }

@@ -22,6 +22,10 @@ import com.example.data.Branch
 import com.example.data.BusinessAccount
 import com.example.data.Employee
 import com.example.data.Supplier
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -187,8 +191,63 @@ class JewelryViewModel(
     private val _dailyItemsSold = MutableStateFlow(0)
     val dailyItemsSold: StateFlow<Int> = _dailyItemsSold
 
+    // --- Firebase Auth & Firestore ---
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
+
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
+    val currentUser: StateFlow<FirebaseUser?> = _currentUser
+
+    private val _syncing = MutableStateFlow(false)
+    val syncing: StateFlow<Boolean> = _syncing
+
     init {
         refreshDailyStats()
+        auth.addAuthStateListener {
+            _currentUser.value = it.currentUser
+        }
+    }
+
+    fun signInWithFirebase(idToken: String, onResult: (Boolean) -> Unit) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential).addOnCompleteListener { task ->
+            onResult(task.isSuccessful)
+        }
+    }
+
+    fun signOut() {
+        auth.signOut()
+    }
+
+    fun syncDataToFirestore() {
+        val user = auth.currentUser
+        if (user == null) return
+
+        _syncing.value = true
+        viewModelScope.launch {
+            try {
+                val userId = user.uid
+                val batch = db.batch()
+
+                // Sync Customers
+                customers.value.forEach { customer ->
+                    val docRef = db.collection("users").document(userId).collection("customers").document(customer.id.toString())
+                    batch.set(docRef, customer)
+                }
+
+                // Sync Inventory
+                inventoryItems.value.forEach { item ->
+                    val docRef = db.collection("users").document(userId).collection("inventory").document(item.id.toString())
+                    batch.set(docRef, item)
+                }
+
+                batch.commit().addOnCompleteListener {
+                    _syncing.value = false
+                }
+            } catch (e: Exception) {
+                _syncing.value = false
+            }
+        }
     }
 
     fun refreshDailyStats() {

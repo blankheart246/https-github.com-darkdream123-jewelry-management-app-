@@ -20,12 +20,15 @@ import com.example.ui.DashboardScreen
 import com.example.ui.JewelryViewModel
 import com.example.ui.JewelryViewModelFactory
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.GoogleSignInHelper
+import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    FirebaseApp.initializeApp(this)
     enableEdgeToEdge()
 
     val database = JewelryDatabase.getDatabase(applicationContext)
