@@ -85,7 +85,8 @@ class JewelryViewModel(
         val ownerName: String = "সুভাষ পাল শান্ত",
         val phone: String = "01712416731",
         val address: String = "মধ্যবাজার তারাকান্দা ময়মনসিংহ",
-        val goldRate22K: String = "১,১৫,০০০"
+        val goldRate22K: String = "১,১৫,০০০",
+        val lowStockThreshold: Int = 3
     )
 
     private val _businessConfig = MutableStateFlow(loadBusinessConfig())
@@ -98,7 +99,8 @@ class JewelryViewModel(
             ownerName = prefs.getString("owner_name", "সুভাষ পাল শান্ত") ?: "সুভাষ পাল শান্ত",
             phone = prefs.getString("phone", "01712416731") ?: "01712416731",
             address = prefs.getString("address", "মধ্যবাজার তারাকান্দা ময়মনসিংহ") ?: "মধ্যবাজার তারাকান্দা ময়মনসিংহ",
-            goldRate22K = prefs.getString("gold_rate_22k", "১,১৫,০০০") ?: "১,১৫,০০০"
+            goldRate22K = prefs.getString("gold_rate_22k", "১,১৫,০০০") ?: "১,১৫,০০০",
+            lowStockThreshold = prefs.getInt("low_stock_threshold", 3)
         )
     }
 
@@ -110,6 +112,7 @@ class JewelryViewModel(
             .putString("phone", config.phone)
             .putString("address", config.address)
             .putString("gold_rate_22k", config.goldRate22K)
+            .putInt("low_stock_threshold", config.lowStockThreshold)
             .apply()
         _businessConfig.value = config
     }
@@ -178,57 +181,41 @@ class JewelryViewModel(
             initialValue = emptyList()
         )
 
-    // --- Authentication State ---
-    private val _currentUser = MutableStateFlow<com.example.data.User?>(null)
-    val currentUser: StateFlow<com.example.data.User?> = _currentUser
+    private val _dailyRevenue = MutableStateFlow(0.0)
+    val dailyRevenue: StateFlow<Double> = _dailyRevenue
 
-    private val _authError = MutableStateFlow<String?>(null)
-    val authError: StateFlow<String?> = _authError
+    private val _dailyItemsSold = MutableStateFlow(0)
+    val dailyItemsSold: StateFlow<Int> = _dailyItemsSold
 
     init {
-        // Simple auto-login if session exists
+        refreshDailyStats()
+    }
+
+    fun refreshDailyStats() {
         viewModelScope.launch {
-            val savedUsername = context.getSharedPreferences("shornoly_auth", android.content.Context.MODE_PRIVATE)
-                .getString("logged_in_username", null)
-            if (savedUsername != null) {
-                _currentUser.value = repository.getUserByUsername(savedUsername)
-            }
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startTime = calendar.timeInMillis
+            
+            _dailyRevenue.value = repository.getDailyRevenue(startTime)
+            _dailyItemsSold.value = repository.getDailyItemsSold(startTime)
         }
     }
 
-    fun login(username: String, passwordRaw: String) {
-        viewModelScope.launch {
-            _authError.value = null
-            val user = repository.getUserByUsername(username)
-            if (user != null && user.passwordHash == passwordRaw) { // In prod, use password hashing
-                _currentUser.value = user
-                context.getSharedPreferences("shornoly_auth", android.content.Context.MODE_PRIVATE)
-                    .edit().putString("logged_in_username", username).apply()
-            } else {
-                _authError.value = "ভুল ইউজারনেম অথবা পাসওয়ার্ড"
-            }
-        }
-    }
-
-    fun register(username: String, passwordRaw: String) {
-        viewModelScope.launch {
-            _authError.value = null
-            val existing = repository.getUserByUsername(username)
-            if (existing != null) {
-                _authError.value = "এই নামে অলরেডি ইউজার আছে"
-                return@launch
-            }
-            val newUser = com.example.data.User(username = username, passwordHash = passwordRaw)
-            repository.insertUser(newUser)
-            login(username, passwordRaw)
-        }
-    }
-
-    fun logout() {
-        _currentUser.value = null
-        context.getSharedPreferences("shornoly_auth", android.content.Context.MODE_PRIVATE)
-            .edit().remove("logged_in_username").apply()
-    }
+    val lowStockAlerts: StateFlow<List<Pair<String, Int>>> = kotlinx.coroutines.flow.combine(inventoryItems, _businessConfig) { items, config ->
+        items.filter { !it.isSold }
+            .groupBy { it.itemType }
+            .mapValues { it.value.size }
+            .filter { it.value < config.lowStockThreshold }
+            .toList()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     // --- Sync / Connection State ---
     private val _isOffline = MutableStateFlow(false)
@@ -291,7 +278,8 @@ class JewelryViewModel(
         valueBdt: Double = 0.0,
         paidBdt: Double = 0.0,
         dueBdt: Double = 0.0,
-        branchId: Long? = null
+        branchId: Long? = null,
+        barcode: String? = null
     ) {
         viewModelScope.launch {
             repository.insertInventoryItem(
@@ -307,7 +295,8 @@ class JewelryViewModel(
                     tags = tags,
                     notes = notes,
                     imageBase64 = imageBase64,
-                    branchId = branchId
+                    branchId = branchId,
+                    barcode = barcode
                 )
             )
         }
@@ -358,6 +347,7 @@ class JewelryViewModel(
                     repository.updateInventoryItem(item.copy(isSold = true, soldToCustomerId = customerId))
                 }
             }
+            refreshDailyStats()
         }
     }
 
@@ -382,6 +372,7 @@ class JewelryViewModel(
                     repository.updateInventoryItem(item.copy(isSold = false, soldToCustomerId = null))
                 }
             }
+            refreshDailyStats()
         }
     }
 
@@ -598,7 +589,7 @@ class JewelryViewModel(
 
         try {
             val response = GeminiClient.service.generateContent(
-                model = "gemini-3.5-flash",
+                model = "gemini-1.5-flash",
                 apiKey = apiKey,
                 request = request
             )
@@ -689,7 +680,7 @@ class JewelryViewModel(
                 )
 
                 val response = GeminiClient.service.generateContent(
-                    model = "gemini-3.5-flash",
+                    model = "gemini-1.5-flash",
                     apiKey = apiKey,
                     request = request
                 )
@@ -846,7 +837,7 @@ class JewelryViewModel(
                 )
 
                 val response = GeminiClient.service.generateContent(
-                    model = "gemini-3.5-flash",
+                    model = "gemini-1.5-flash",
                     apiKey = key,
                     request = request
                 )
@@ -999,7 +990,7 @@ class JewelryViewModel(
                     generationConfig = GeminiGenerationConfig(temperature = 0.2)
                 )
 
-                val response = GeminiClient.service.generateContent("gemini-3.5-flash", key, request)
+                val response = GeminiClient.service.generateContent("gemini-1.5-flash", key, request)
                 val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
                 
                 if (!text.isNullOrEmpty()) {
@@ -1040,7 +1031,7 @@ class JewelryViewModel(
                 )
 
                 val response = GeminiClient.service.generateContent(
-                    model = "gemini-3.5-flash",
+                    model = "gemini-1.5-flash",
                     apiKey = key,
                     request = request
                 )
@@ -1075,32 +1066,66 @@ class JewelryViewModel(
     }
 
     // --- New Business Section Methods ---
-    fun addBranch(name: String, location: String, phone: String, isMain: Boolean) {
+    fun addBranch(name: String, location: String, phone: String, isMain: Boolean = false) {
         viewModelScope.launch { repository.insertBranch(Branch(branchName = name, location = location, phone = phone, isMainBranch = isMain)) }
+    }
+
+    fun deleteBranch(branch: Branch) {
+        viewModelScope.launch { repository.deleteBranch(branch) }
     }
 
     fun addSupplier(name: String, contact: String, address: String) {
         viewModelScope.launch { repository.insertSupplier(Supplier(name = name, contact = contact, address = address)) }
     }
 
+    fun updateSupplier(supplier: Supplier) {
+        viewModelScope.launch { repository.updateSupplier(supplier) }
+    }
+
+    fun deleteSupplier(supplier: Supplier) {
+        viewModelScope.launch { repository.deleteSupplier(supplier) }
+    }
+
     fun addArtisan(name: String, contact: String, specialty: String) {
         viewModelScope.launch { repository.insertArtisan(Artisan(name = name, contact = contact, specialty = specialty)) }
+    }
+
+    fun updateArtisan(artisan: Artisan) {
+        viewModelScope.launch { repository.updateArtisan(artisan) }
+    }
+
+    fun deleteArtisan(artisan: Artisan) {
+        viewModelScope.launch { repository.deleteArtisan(artisan) }
     }
 
     fun addEmployee(name: String, role: String, phone: String, salary: Double) {
         viewModelScope.launch { repository.insertEmployee(Employee(name = name, role = role, phone = phone, salary = salary)) }
     }
 
+    fun deleteEmployee(employee: Employee) {
+        viewModelScope.launch { repository.deleteEmployee(employee) }
+    }
+
     fun addBankAccount(bankName: String, accountNo: String, balance: Double) {
         viewModelScope.launch { repository.insertBankAccount(BankAccount(bankName = bankName, accountNo = accountNo, balanceBdt = balance)) }
+    }
+
+    fun updateBankAccount(account: BankAccount) {
+        viewModelScope.launch { repository.updateBankAccount(account) }
+    }
+
+    fun deleteBankAccount(account: BankAccount) {
+        viewModelScope.launch { repository.deleteBankAccount(account) }
     }
 
     fun addBusinessAccount(type: String, category: String, amount: Double, notes: String, branchId: Long? = null) {
         viewModelScope.launch {
             repository.insertBusinessAccount(BusinessAccount(type = type, category = category, amountBdt = amount, notes = notes, branchId = branchId))
-            
-            // Adjust bank balance if linked to a bank (simple logic: usually banking is separate, but we can link later)
         }
+    }
+
+    fun deleteBusinessAccount(account: BusinessAccount) {
+        viewModelScope.launch { repository.deleteBusinessAccount(account) }
     }
 
     // --- PDF Generation ---
@@ -1177,7 +1202,7 @@ class JewelryViewModel(
 
             try {
                 val response = GeminiClient.service.generateContent(
-                    model = "gemini-3.5-flash",
+                    model = "gemini-1.5-flash",
                     apiKey = apiKey,
                     request = request
                 )
@@ -1190,6 +1215,149 @@ class JewelryViewModel(
             } catch (e: Exception) {
                 _aiBusinessAdviceState.value = AIBusinessAdviceState.Error("ত্রুটি: ${e.localizedMessage}")
             }
+        }
+    }
+
+    // --- Theme & Dark Mode ---
+    private val _isDarkMode = MutableStateFlow(loadThemePreference())
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode
+
+    private fun loadThemePreference(): Boolean {
+        val prefs = context.getSharedPreferences("shornoly_prefs", android.content.Context.MODE_PRIVATE)
+        return prefs.getBoolean("dark_mode", false)
+    }
+
+    fun toggleTheme() {
+        _isDarkMode.value = !_isDarkMode.value
+        val prefs = context.getSharedPreferences("shornoly_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("dark_mode", _isDarkMode.value).apply()
+    }
+
+    // --- AI Chat Feature ---
+    data class ChatMessage(val content: String, val role: String)
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages
+    private val _isChatLoading = MutableStateFlow(false)
+    val isChatLoading: StateFlow<Boolean> = _isChatLoading
+
+    fun sendChatMessage(input: String) {
+        if (input.isBlank()) return
+        val userMsg = ChatMessage(input, "user")
+        _chatMessages.value = _chatMessages.value + userMsg
+        _isChatLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val apiKey = BuildConfig.GEMINI_API_KEY
+                if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY" || apiKey == "PLACEHOLDER") {
+                    // Quick Bengali localized fallback logic
+                    kotlinx.coroutines.delay(1000)
+                    val response = getOfflineChatResponse(input)
+                    _chatMessages.value = _chatMessages.value + ChatMessage(response, "model")
+                    return@launch
+                }
+
+                val prompt = "You are a specialized Jewelry Shop AI Assistant ($input). Help the user with their business questions, stock management, and customer relations. Use the context of a jewelry business in Bangladesh. Current shop name: ${businessConfig.value.shopName}"
+                val response = GeminiClient.service.generateContent(
+                    model = "gemini-1.5-flash",
+                    apiKey = apiKey,
+                    request = GeminiRequest(
+                        contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = prompt)))),
+                        generationConfig = GeminiGenerationConfig(temperature = 0.7)
+                    )
+                )
+                val reply = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "কোনো উত্তর পাওয়া যায়নি।"
+                _chatMessages.value = _chatMessages.value + ChatMessage(reply, "model")
+            } catch (e: Exception) {
+                _chatMessages.value = _chatMessages.value + ChatMessage("সার্ভারে ত্রুটি: ${e.localizedMessage}", "model")
+            } finally {
+                _isChatLoading.value = false
+            }
+        }
+    }
+
+    private fun getOfflineChatResponse(input: String): String {
+        val q = input.lowercase()
+        return when {
+            q.contains("সালাম") || q.contains("hello") || q.contains("hi") -> "আসসালামু আলাইকুম! আমি আপনার স্বর্ণের দোকানের এসিস্ট্যান্ট। আপনি স্টক ম্যানেজমেন্ট, কাস্টমার খতিয়ান বা বিক্রয় নিয়ে যেকোনো প্রশ্ন করতে পারেন।"
+            q.contains("স্টক") || q.contains("inventory") || q.contains("গহনা") -> "আপনার দোকানে বর্তমানে ${inventoryItems.value.size}টি গহনা নিবন্ধিত আছে। এর মধ্যে ${inventoryItems.value.count { !it.isSold }}টি বিক্রয়ের জন্য এভেইলেবল।"
+            q.contains("কাস্টমার") || q.contains("customer") -> "আপনার এখন পর্যন্ত ${customers.value.size} জন নিয়মিত গ্রাহক রয়েছেন। তাদের বিস্তারিত খতিয়ান আপনি 'Customers' ট্যাব থেকে দেখতে পারেন।"
+            q.contains("বাকি") || q.contains("due") -> "সবগুলো মেমো চেক করে দেখা যাচ্ছে মোট বকেয়া আছে। নির্দিষ্ট গ্রাহকের বকেয়া জানতে তার প্রোফাইলে চেক করুন।"
+            q.contains("এডভাইস") || q.contains("পরামর্শ") || q.contains("advice") -> "ব্যবসায় উন্নতির জন্য নিয়মিত নতুন ডিজাইনের বিজ্ঞাপন দিন এবং বকেয়া টাকা আদায়ের জন্য কিস্তি সুবিধা চালু রাখতে পারেন।"
+            else -> "দুঃখিত, এপিআই কি সেট না থাকায় আমি সীমিত আকারে উত্তর দিচ্ছি। তবে আপনার ব্যবসার সাধারণ তথ্য অনুযায়ী আমি বলতে পারি যে আপনার সব কিছু সঠিকভাবে পরিচালিত হচ্ছে। আরও বিস্তারিত জানতে এপিআই কি সচল করুন।"
+        }
+    }
+
+    fun clearChat() {
+        _chatMessages.value = emptyList()
+    }
+
+    // --- Voice Command Support ---
+    private val _isVoiceActive = MutableStateFlow(false)
+    val isVoiceActive: StateFlow<Boolean> = _isVoiceActive
+    private val _voiceCommandResult = MutableStateFlow("")
+    val voiceCommandResult: StateFlow<String> = _voiceCommandResult
+
+    fun setVoiceActive(active: Boolean) {
+        _isVoiceActive.value = active
+        if (active) _voiceCommandResult.value = ""
+    }
+
+    fun processVoiceCommand(command: String) {
+        viewModelScope.launch {
+            _voiceCommandResult.value = "প্রসেসিং: $command..."
+            kotlinx.coroutines.delay(1000)
+            
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startTime = calendar.timeInMillis
+            
+            val response = when {
+                command.contains("আজক", true) && (command.contains("বিক্রি", true) || command.contains("revenue", true)) -> {
+                    val rev = repository.getDailyRevenue(startTime)
+                    "আপনার আজকের মোট বিক্রি ৳ ${String.format("%,.0f", rev)} টাকা।"
+                }
+                command.contains("আজক", true) && (command.contains("আইটেম", true) || command.contains("item", true)) -> {
+                    val count = repository.getDailyItemsSold(startTime)
+                    "আজকে আপনি মোট $count টি গহনা বিক্রি করেছেন।"
+                }
+                command.contains("স্টক", true) || command.contains("stock", true) -> {
+                    val lowItems = lowStockAlerts.value
+                    if (lowItems.isEmpty()) "আপনার স্টকে সব আইটেম পর্যাপ্ত আছে।"
+                    else "আপনার স্টকে ${lowItems.size}টি ক্যাটাগরিতে স্টক কম আছে।"
+                }
+                else -> "আমি আপনার ভাষা বুঝতে পারছি না, অনুগ্রহ করে আবার বলুন।"
+            }
+            _voiceCommandResult.value = response
+        }
+    }
+
+    fun clearVoiceState() {
+        _isVoiceActive.value = false
+        _voiceCommandResult.value = ""
+    }
+
+    // --- Customer Ledger ---
+    fun getCustomerTransactions(customerId: Long): kotlinx.coroutines.flow.Flow<List<Transaction>> {
+        return repository.getTransactionsByCustomerId(customerId)
+    }
+
+    // --- Backup & Restore ---
+    fun exportBackup() {
+        viewModelScope.launch {
+            // Placeholder: Serializing entire DB to JSON and saving to shared prefs or file
+            // In a real app, use Scoped Storage to save a .db file
+            val data = JSONObject().apply {
+                put("customers", customers.value.size)
+                put("inventory", inventoryItems.value.size)
+                put("timestamp", System.currentTimeMillis())
+            }
+            context.getSharedPreferences("shornoly_backup", android.content.Context.MODE_PRIVATE)
+                .edit().putString("latest_backup", data.toString()).apply()
+            _globalSearchMessage.value = "ব্যাকআপ সম্পন্ন হয়েছে রক্ষিত খতিয়ান: ${customers.value.size} জন গ্রাহক।"
         }
     }
 

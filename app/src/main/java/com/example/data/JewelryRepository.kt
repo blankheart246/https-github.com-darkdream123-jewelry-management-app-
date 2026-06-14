@@ -65,16 +65,35 @@ class JewelryRepository(private val jewelryDao: JewelryDao) {
     val allBusinessAccounts: Flow<List<BusinessAccount>> = jewelryDao.getAllBusinessAccounts()
 
     suspend fun insertBranch(branch: Branch) = jewelryDao.insertBranch(branch)
+    suspend fun deleteBranch(branch: Branch) = jewelryDao.deleteBranch(branch)
+
     suspend fun insertSupplier(supplier: Supplier) = jewelryDao.insertSupplier(supplier)
     suspend fun updateSupplier(supplier: Supplier) = jewelryDao.updateSupplier(supplier)
+    suspend fun deleteSupplier(supplier: Supplier) = jewelryDao.deleteSupplier(supplier)
+
     suspend fun insertArtisan(artisan: Artisan) = jewelryDao.insertArtisan(artisan)
     suspend fun updateArtisan(artisan: Artisan) = jewelryDao.updateArtisan(artisan)
+    suspend fun deleteArtisan(artisan: Artisan) = jewelryDao.deleteArtisan(artisan)
+
     suspend fun insertEmployee(employee: Employee) = jewelryDao.insertEmployee(employee)
+    suspend fun deleteEmployee(employee: Employee) = jewelryDao.deleteEmployee(employee)
+
     suspend fun insertBankAccount(account: BankAccount) = jewelryDao.insertBankAccount(account)
     suspend fun updateBankAccount(account: BankAccount) = jewelryDao.updateBankAccount(account)
+    suspend fun deleteBankAccount(account: BankAccount) = jewelryDao.deleteBankAccount(account)
+
     suspend fun insertBusinessAccount(account: BusinessAccount) = jewelryDao.insertBusinessAccount(account)
+    suspend fun deleteBusinessAccount(account: BusinessAccount) = jewelryDao.deleteBusinessAccount(account)
 
     // --- Authentication ---
     suspend fun getUserByUsername(username: String): User? = jewelryDao.getUserByUsername(username)
     suspend fun insertUser(user: User): Long = jewelryDao.insertUser(user)
+
+    suspend fun getDailyRevenue(startOfDay: Long): Double {
+        return jewelryDao.getDailyRevenue(startOfDay) ?: 0.0
+    }
+
+    suspend fun getDailyItemsSold(startOfDay: Long): Int {
+        return jewelryDao.getDailyItemsSold(startOfDay)
+    }
 }

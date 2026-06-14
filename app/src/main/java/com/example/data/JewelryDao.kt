@@ -47,6 +47,12 @@ interface JewelryDao {
     @Query("SELECT * FROM transactions WHERE customerId = :customerId ORDER BY date DESC")
     fun getTransactionsByCustomerId(customerId: Long): Flow<List<Transaction>>
 
+    @Query("SELECT SUM(amountBdt) FROM transactions WHERE transactionType = 'Sale' AND date >= :startOfDay")
+    suspend fun getDailyRevenue(startOfDay: Long): Double?
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE transactionType = 'Sale' AND date >= :startOfDay")
+    suspend fun getDailyItemsSold(startOfDay: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: Transaction): Long
 
@@ -63,6 +69,9 @@ interface JewelryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBranch(branch: Branch): Long
 
+    @Delete
+    suspend fun deleteBranch(branch: Branch)
+
     // --- Supplier Queries ---
     @Query("SELECT * FROM suppliers ORDER BY name ASC")
     fun getAllSuppliers(): Flow<List<Supplier>>
@@ -72,6 +81,9 @@ interface JewelryDao {
 
     @Update
     suspend fun updateSupplier(supplier: Supplier)
+
+    @Delete
+    suspend fun deleteSupplier(supplier: Supplier)
 
     // --- Artisan Queries ---
     @Query("SELECT * FROM artisans ORDER BY name ASC")
@@ -83,12 +95,18 @@ interface JewelryDao {
     @Update
     suspend fun updateArtisan(artisan: Artisan)
 
+    @Delete
+    suspend fun deleteArtisan(artisan: Artisan)
+
     // --- Employee Queries ---
     @Query("SELECT * FROM employees ORDER BY joiningDate DESC")
     fun getAllEmployees(): Flow<List<Employee>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEmployee(employee: Employee): Long
+
+    @Delete
+    suspend fun deleteEmployee(employee: Employee)
 
     // --- Banking Queries ---
     @Query("SELECT * FROM bank_accounts ORDER BY bankName ASC")
@@ -100,12 +118,18 @@ interface JewelryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBankAccount(account: BankAccount): Long
 
+    @Delete
+    suspend fun deleteBankAccount(account: BankAccount)
+
     // --- Business Account Queries (Income/Expense) ---
     @Query("SELECT * FROM business_accounts ORDER BY date DESC")
     fun getAllBusinessAccounts(): Flow<List<BusinessAccount>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBusinessAccount(account: BusinessAccount): Long
+
+    @Delete
+    suspend fun deleteBusinessAccount(account: BusinessAccount)
 
     // --- Authentication Queries ---
     @Query("SELECT * FROM users WHERE username = :username LIMIT 1")

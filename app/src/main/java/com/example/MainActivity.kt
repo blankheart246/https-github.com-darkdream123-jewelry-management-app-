@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.data.Customer
 import com.example.data.InventoryItem
 import com.example.data.JewelryDatabase
@@ -138,7 +140,8 @@ class MainActivity : ComponentActivity() {
     }
 
     setContent {
-      MyApplicationTheme {
+      val isDark by viewModel.isDarkMode.collectAsState(initial = false)
+      MyApplicationTheme(darkTheme = isDark) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
           DashboardScreen(
             viewModel = viewModel,

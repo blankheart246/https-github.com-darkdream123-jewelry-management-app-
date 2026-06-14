@@ -13,6 +13,8 @@ import androidx.core.content.FileProvider
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -77,14 +79,19 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
     var showBusinessConfigDialog by remember { mutableStateOf(false) }
     var showInvoicePreviewDialog by remember { mutableStateOf<Transaction?>(null) }
     var showGlobalSearchDialog by remember { mutableStateOf(false) }
+    var showStockAlertsDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showChatSheet by remember { mutableStateOf(false) }
+    var showLedgerForCustomer by remember { mutableStateOf<Customer?>(null) }
+    var showAddSupplierDialog by remember { mutableStateOf(false) }
+    var showAddArtisanDialog by remember { mutableStateOf(false) }
+    var showAddEmployeeDialog by remember { mutableStateOf(false) }
+    var showAddBranchDialog by remember { mutableStateOf(false) }
+    var showAddBankAccountDialog by remember { mutableStateOf(false) }
+    var showAddBusinessAccountDialog by remember { mutableStateOf(false) }
 
     val isOffline by viewModel.isOffline.collectAsState()
-    val currentUser by viewModel.currentUser.collectAsState()
-
-    if (currentUser == null) {
-        LoginScreen(viewModel)
-        return
-    }
+    val isDark by viewModel.isDarkMode.collectAsState()
 
     Scaffold(
         topBar = {
@@ -147,21 +154,29 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val stockAlerts by viewModel.lowStockAlerts.collectAsState()
+                        if (stockAlerts.isNotEmpty()) {
+                            IconButton(onClick = { showStockAlertsDialog = true }) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge(containerColor = Color.Red) {
+                                            Text(stockAlerts.size.toString(), color = Color.White)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color(0xFFBA1A1A)
+                                    )
+                                }
+                            }
+                        }
                         IconButton(onClick = { showGlobalSearchDialog = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Global Search", tint = Color(0xFF7D5800))
                         }
-                        IconButton(
-                            onClick = { viewModel.logout() },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Logout,
-                                contentDescription = "Logout",
-                                tint = Color(0xFF504539),
-                                modifier = Modifier.size(24.dp)
-                            )
+                        IconButton(onClick = { showSettingsDialog = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color(0xFF7D5800))
                         }
                     }
                 }
@@ -368,6 +383,18 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            if (activeTab == "home") {
+                FloatingActionButton(
+                    onClick = { showChatSheet = true },
+                    containerColor = Color(0xFF7D5800),
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Chat, contentDescription = "AI Assistant")
+                }
+            }
+        },
         modifier = modifier
     ) { innerPadding ->
         Box(
@@ -398,16 +425,22 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                     onItemClick = { showEditInventoryDialog = it }
                 )
                 "management" -> ManagementTabContent(
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onAddSupplier = { showAddSupplierDialog = true },
+                    onAddArtisan = { showAddArtisanDialog = true },
+                    onAddEmployee = { showAddEmployeeDialog = true },
+                    onAddBranch = { showAddBranchDialog = true }
                 )
                 "finance" -> FinanceTabContent(
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onAddBankAccount = { showAddBankAccountDialog = true },
+                    onAddBusinessAccount = { showAddBusinessAccountDialog = true }
                 )
                 "customers" -> CustomersTabContent(
                     viewModel = viewModel,
                     customers = customers,
                     onAddCustomerClick = { showAddCustomerDialog = true },
-                    onCustomerClick = { showCustomerDetailsDialog = it }
+                    onCustomerClick = { showLedgerForCustomer = it }
                 )
             }
         }
@@ -429,7 +462,7 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
         AddInventoryDialog(
             branches = branches,
             onDismiss = { showAddInventoryDialog = false },
-            onConfirm = { title, type, karat, weight, value, notes, tags, valBdt, paidBdt, dueBdt, base64, bId ->
+            onConfirm = { title, type, karat, weight, value, notes, tags, valBdt, paidBdt, dueBdt, base64, bId, bCode ->
                 viewModel.addInventoryItem(
                     title = title,
                     itemType = type,
@@ -442,7 +475,8 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                     valueBdt = valBdt,
                     paidBdt = paidBdt,
                     dueBdt = dueBdt,
-                    branchId = bId
+                    branchId = bId,
+                    barcode = bCode
                 )
                 showAddInventoryDialog = false
             }
@@ -471,11 +505,127 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
         )
     }
 
+    if (showAddSupplierDialog) {
+        AddSupplierDialog(
+            onDismiss = { showAddSupplierDialog = false },
+            onConfirm = { name, contact, address ->
+                viewModel.addSupplier(name, contact, address)
+                showAddSupplierDialog = false
+            }
+        )
+    }
+
+    if (showAddArtisanDialog) {
+        AddArtisanDialog(
+            onDismiss = { showAddArtisanDialog = false },
+            onConfirm = { name, contact, specialty ->
+                viewModel.addArtisan(name, contact, specialty)
+                showAddArtisanDialog = false
+            }
+        )
+    }
+
+    if (showAddEmployeeDialog) {
+        AddEmployeeDialog(
+            onDismiss = { showAddEmployeeDialog = false },
+            onConfirm = { name, role, phone, salary ->
+                viewModel.addEmployee(name, role, phone, salary)
+                showAddEmployeeDialog = false
+            }
+        )
+    }
+
+    if (showAddBranchDialog) {
+        AddBranchDialog(
+            onDismiss = { showAddBranchDialog = false },
+            onConfirm = { name, loc, phone ->
+                viewModel.addBranch(name, loc, phone)
+                showAddBranchDialog = false
+            }
+        )
+    }
+
+    if (showAddBankAccountDialog) {
+        AddBankAccountDialog(
+            onDismiss = { showAddBankAccountDialog = false },
+            onConfirm = { name, no, bal ->
+                viewModel.addBankAccount(name, no, bal)
+                showAddBankAccountDialog = false
+            }
+        )
+    }
+
+    if (showAddBusinessAccountDialog) {
+        AddBusinessAccountDialog(
+            onDismiss = { showAddBusinessAccountDialog = false },
+            onConfirm = { type, category, amount, notes ->
+                viewModel.addBusinessAccount(type, category, amount, notes)
+                showAddBusinessAccountDialog = false
+            }
+        )
+    }
+
     if (showGlobalSearchDialog) {
         GlobalSearchDialog(
             viewModel = viewModel,
             onDismiss = { showGlobalSearchDialog = false }
         )
+    }
+
+    if (showStockAlertsDialog) {
+        val stockAlerts by viewModel.lowStockAlerts.collectAsState()
+        Dialog(onDismissRequest = { showStockAlertsDialog = false }) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "স্টক এলার্ট (সতর্কতা)",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFBA1A1A)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (stockAlerts.isEmpty()) {
+                        Text("সব ক্যাটাগরির পর্যাপ্ত স্টক আছে।")
+                    } else {
+                        stockAlerts.forEach { (type, count) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val localizedType = when (type) {
+                                    "Ring" -> "আংটি"
+                                    "Necklace" -> "নেকলেস"
+                                    "Bracelet" -> "ব্রেসলেট"
+                                    "Earrings" -> "দুল"
+                                    "Pendant" -> "লকেট"
+                                    else -> type
+                                }
+                                Text(localizedType, fontWeight = FontWeight.Medium)
+                                Text(
+                                    text = "বাকি আছে: $count টি",
+                                    color = Color.Red,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Divider()
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = { showStockAlertsDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7D5800))
+                    ) {
+                        Text("বন্ধ করুন")
+                    }
+                }
+            }
+        }
     }
 
     // Live AI Vision Extract Review Overlay
@@ -1033,6 +1183,36 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
             }
         )
     }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            viewModel = viewModel,
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
+
+    if (showChatSheet) {
+        AIAssistantChatSheet(
+            viewModel = viewModel,
+            onDismiss = { showChatSheet = false }
+        )
+    }
+
+    showLedgerForCustomer?.let { customer ->
+        CustomerLedgerDialog(
+            viewModel = viewModel,
+            customer = customer,
+            onDismiss = { showLedgerForCustomer = null }
+        )
+    }
+
+    val isVoiceActive by viewModel.isVoiceActive.collectAsState()
+    if (isVoiceActive) {
+        VoiceInteractionOverlay(
+            viewModel = viewModel,
+            onDismiss = { viewModel.clearVoiceState() }
+        )
+    }
 }
 @Composable
 fun HomeTabContent(
@@ -1167,9 +1347,107 @@ fun HomeTabContent(
                     )
                 }
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "কুইক স্মার্ট অ্যাকশন (Smart AI)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF7D5800),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Voice Command Card
+                Card(
+                    modifier = Modifier.weight(1f).clickable { viewModel.setVoiceActive(true) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = null, tint = Color(0xFF7D5800))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("ভয়েস কমান্ড", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                
+                // AI Photo Scan Card
+                Card(
+                    modifier = Modifier.weight(1f).clickable { onMetricClick("catalog") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color(0xFF7D5800))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("কুইক স্ক্যান", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
             GoldCalculatorWidget(businessConfig = businessConfig)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- Business Performance Summary Widget ---
+            Text(
+                text = "আজকের ব্যবসায়িক পারফরম্যান্স (Daily Stats)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF7D5800),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            val dailyRevenue by viewModel.dailyRevenue.collectAsState()
+            val dailyItemsSold by viewModel.dailyItemsSold.collectAsState()
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF2E6)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFFE6DBC9))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.TrendingUp, contentDescription = null, tint = Color(0xFF2E7D32))
+                        Text("মোট বিক্রি", fontSize = 10.sp, color = Color.Gray)
+                        Text(
+                            text = "৳ ${String.format("%,.0f", dailyRevenue)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                    Divider(modifier = Modifier.height(30.dp).width(1.dp), color = Color(0xFFE6DBC9))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Inventory, contentDescription = null, tint = Color(0xFF765B48))
+                        Text("আইটেম বিক্রি", fontSize = 10.sp, color = Color.Gray)
+                        Text(
+                            text = "$dailyItemsSold টি",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF765B48)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
 
             // Metrics Grid (2x2 style) - Clickable!
@@ -2427,7 +2705,7 @@ fun AddCustomerDialog(
 fun AddInventoryDialog(
     branches: List<com.example.data.Branch>,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, type: String, karat: String, weight: Double, value: Double, notes: String, tags: String, valueBdt: Double, paidBdt: Double, dueBdt: Double, base64: String?, branchId: Long?) -> Unit
+    onConfirm: (title: String, type: String, karat: String, weight: Double, value: Double, notes: String, tags: String, valueBdt: Double, paidBdt: Double, dueBdt: Double, base64: String?, branchId: Long?, barcode: String?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("Ring") }
@@ -2435,6 +2713,7 @@ fun AddInventoryDialog(
     var weightStr by remember { mutableStateOf("") }
     var valueStr by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var barcode by remember { mutableStateOf("") }
     var selectedBranchId by remember { mutableStateOf<Long?>(null) }
     var expandedBranches by remember { mutableStateOf(false) }
 
@@ -2507,6 +2786,14 @@ fun AddInventoryDialog(
                     label = { Text("Tags (comma separated e.g. vintage, 22k)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("input_inv_tags")
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = barcode,
+                    onValueChange = { barcode = it },
+                    label = { Text("Barcode / unique ID (Optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("input_inv_barcode")
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -2588,7 +2875,8 @@ fun AddInventoryDialog(
                             paidBdtStr.toDoubleOrNull() ?: 0.0,
                             computedDueBdt,
                             null,
-                            selectedBranchId
+                            selectedBranchId,
+                            barcode.ifBlank { null }
                         )
                     }
                 },
@@ -3570,6 +3858,45 @@ fun InvoicePreviewDialog(
                             }
                         }
 
+                        Divider(color = Color(0xFFEAE2D9))
+
+                        // Terms and Conditions Section
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                        ) {
+                            Text(
+                                "শর্তাবলী:",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7D5800)
+                            )
+                            Text(
+                                "১. বিক্রিত মাল ফেরত নেওয়া হয় না।\n২. গহনার গুণগত মানের গ্যারান্টি আমরা প্রদান করি।\n৩. আমাদের দোকানে আসার জন্য আপনাকে অশেষ ধন্যবাদ।",
+                                fontSize = 9.sp,
+                                color = Color.Gray,
+                                lineHeight = 12.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Signature Area
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Divider(thickness = 1.dp, color = Color.Black, modifier = Modifier.width(80.dp).padding(bottom = 2.dp))
+                                Text("ক্রেতার স্বাক্ষর", fontSize = 9.sp)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Divider(thickness = 1.dp, color = Color.Black, modifier = Modifier.width(80.dp).padding(bottom = 2.dp))
+                                Text("বিক্রেতার স্বাক্ষর", fontSize = 9.sp)
+                            }
+                        }
+
                         // Interaction Buttons (PDF / Share)
                         val context = LocalContext.current
                         Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -4215,7 +4542,13 @@ fun CategoryDistributionChart(inventoryItems: List<InventoryItem>) {
 }
 
 @Composable
-fun ManagementTabContent(viewModel: JewelryViewModel) {
+fun ManagementTabContent(
+    viewModel: JewelryViewModel,
+    onAddSupplier: () -> Unit,
+    onAddArtisan: () -> Unit,
+    onAddEmployee: () -> Unit,
+    onAddBranch: () -> Unit
+) {
     var subTab by remember { mutableStateOf("suppliers") } // "suppliers", "artisans", "employees", "branches"
 
     val suppliers by viewModel.suppliers.collectAsState()
@@ -4224,12 +4557,31 @@ fun ManagementTabContent(viewModel: JewelryViewModel) {
     val branches by viewModel.branches.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "ব্যবসায়িক ব্যবস্থাপনা",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF7D5800)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "ব্যবসায়িক ব্যবস্থাপনা",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF7D5800)
+            )
+            IconButton(
+                onClick = {
+                    when(subTab) {
+                        "suppliers" -> onAddSupplier()
+                        "artisans" -> onAddArtisan()
+                        "employees" -> onAddEmployee()
+                        "branches" -> onAddBranch()
+                    }
+                },
+                modifier = Modifier.background(Color(0xFFFAF2E6), CircleShape)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color(0xFF7D5800))
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         ScrollableTabRow(
@@ -4336,7 +4688,11 @@ fun PnLBar(label: String, value: Double, color: Color, maxValue: Double) {
 }
 
 @Composable
-fun FinanceTabContent(viewModel: JewelryViewModel) {
+fun FinanceTabContent(
+    viewModel: JewelryViewModel,
+    onAddBankAccount: () -> Unit,
+    onAddBusinessAccount: () -> Unit
+) {
     val context = LocalContext.current
     val inventoryItems by viewModel.inventoryItems.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
@@ -4347,12 +4703,29 @@ fun FinanceTabContent(viewModel: JewelryViewModel) {
     var subTab by remember { mutableStateOf("banking") } // "banking", "accounts", "reports"
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "আর্থিক হিসাব-নিকাশ",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF7D5800)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "আর্থিক হিসাব-নিকাশ",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF7D5800)
+            )
+            IconButton(
+                onClick = {
+                    when(subTab) {
+                        "banking" -> onAddBankAccount()
+                        "accounts" -> onAddBusinessAccount()
+                    }
+                },
+                modifier = Modifier.background(Color(0xFFFAF2E6), CircleShape)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color(0xFF7D5800))
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         TabRow(
@@ -4565,82 +4938,6 @@ fun EmptyState(message: String) {
     }
 }
 
-@Composable
-fun LoginScreen(viewModel: JewelryViewModel) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isRegistering by remember { mutableStateOf(false) }
-    val authError by viewModel.authError.collectAsState()
-
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFFFBFA)), contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier.padding(24.dp).fillMaxWidth().verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Default.Diamond, contentDescription = null, tint = Color(0xFF7D5800), modifier = Modifier.size(64.dp))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "স্বর্ণালি শিল্পালয়", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color(0xFF7D5800))
-            Text(text = "স্মার্ট বিজনেস ম্যানেজমেন্ট", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-            
-            Spacer(modifier = Modifier.height(40.dp))
-            
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(text = if (isRegistering) "নতুন একাউন্ট খুলুন" else "লগইন করুন", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(20.dp))
-                    
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("ইউজারনেম") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("পাসওয়ার্ড") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
-                    )
-                    
-                    if (authError != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = authError!!, color = Color.Red, fontSize = 12.sp)
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Button(
-                        onClick = {
-                            if (isRegistering) viewModel.register(username, password)
-                            else viewModel.login(username, password)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7D5800))
-                    ) {
-                        Text(if (isRegistering) "রেজিস্টার করুন" else "লগইন")
-                    }
-                    
-                    TextButton(
-                        onClick = { isRegistering = !isRegistering },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (isRegistering) "অলরেডি একাউন্ট আছে? লগইন করুন" else "নতুন একাউন্ট খুলুন", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GlobalSearchDialog(
@@ -4724,4 +5021,551 @@ fun GlobalSearchDialog(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsDialog(viewModel: JewelryViewModel, onDismiss: () -> Unit) {
+    val isDark by viewModel.isDarkMode.collectAsState()
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    "সেটিং এবং থিম",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("ডার্ক মোড (Dark Mode)")
+                    }
+                    Switch(
+                        checked = isDark,
+                        onCheckedChange = { viewModel.toggleTheme() }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    "ডেটা ব্যাকআপ এবং ম্যানেজমেন্ট",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.exportBackup() },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, Color(0xFF7D5800)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Color(0xFF7D5800), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ব্যাকআপ নিন", fontSize = 11.sp, color = Color(0xFF7D5800))
+                    }
+                    OutlinedButton(
+                        onClick = { /* Restore Logic Placeholder */ },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, Color.Gray),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ব্রাউজ ব্যাকআপ", fontSize = 11.sp, color = Color.Gray)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    "এপ্লিকেশন তথ্য",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "স্বর্ণালি শিল্পালয় স্মার্ট বিজনেস ম্যানেজমেন্ট\nভার্সন: ৩.১.০\nডেভেলপড বাই এআই স্টুডিও",
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7D5800))
+                ) {
+                    Text("বন্ধ করুন", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AIAssistantChatSheet(viewModel: JewelryViewModel, onDismiss: () -> Unit) {
+    val chatMessages by viewModel.chatMessages.collectAsState()
+    val isLoading by viewModel.isChatLoading.collectAsState()
+    var messageText by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(modifier = Modifier.fillMaxHeight(0.85f).padding(horizontal = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "স্বর্ণালি স্মার্ট সহকারী (AI)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = { viewModel.clearChat() }) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = "Clear Chat", tint = Color.Gray)
+                }
+            }
+            
+            Box(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                val scrollState = rememberLazyListState()
+                LaunchedEffect(chatMessages.size) {
+                    if (chatMessages.isNotEmpty()) {
+                        scrollState.animateScrollToItem(chatMessages.size - 1)
+                    }
+                }
+                
+                LazyColumn(state = scrollState, modifier = Modifier.fillMaxSize()) {
+                    items(chatMessages) { msg ->
+                        ChatBubble(msg)
+                    }
+                    if (isLoading) {
+                        item {
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    placeholder = { Text("জিজ্ঞাসা করুন...") },
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    maxLines = 3
+                )
+                FloatingActionButton(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            viewModel.sendChatMessage(messageText)
+                            messageText = ""
+                        }
+                    },
+                    containerColor = Color(0xFF765B40),
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(msg: JewelryViewModel.ChatMessage) {
+    val isModel = msg.role == "model"
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalAlignment = if (isModel) Alignment.Start else Alignment.End
+    ) {
+        Card(
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (isModel) 0.dp else 16.dp,
+                bottomEnd = if (isModel) 16.dp else 0.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isModel) Color(0xFFF3EFEA) else Color(0xFF7D5800)
+            ),
+            modifier = Modifier.widthIn(max = 280.dp)
+        ) {
+            Text(
+                text = msg.content,
+                modifier = Modifier.padding(12.dp),
+                color = if (isModel) Color.Black else Color.White,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun VoiceInteractionOverlay(viewModel: JewelryViewModel, onDismiss: () -> Unit) {
+    val result by viewModel.voiceCommandResult.collectAsState()
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1B16)),
+            modifier = Modifier.size(280.dp).padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = Color(0xFFFFDDB3),
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = if (result.isEmpty()) "বলুন, আমি শুনছি..." else result,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                
+                if (result.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    TextButton(onClick = onDismiss) {
+                        Text("ঠিক আছে", color = Color(0xFFFFDDB3))
+                    }
+                }
+            }
+        }
+    }
+    
+    // Simulate voice entry
+    LaunchedEffect(Unit) {
+        if (result.isEmpty()) {
+            kotlinx.coroutines.delay(2000)
+            viewModel.processVoiceCommand("আজকের স্টক কি?")
+        }
+    }
+}
+
+@Composable
+fun CustomerLedgerDialog(
+    viewModel: JewelryViewModel,
+    customer: Customer,
+    onDismiss: () -> Unit
+) {
+    val transactions by viewModel.getCustomerTransactions(customer.id).collectAsState(initial = emptyList())
+    val totalPurchased = transactions.filter { it.transactionType == "Purchase" || it.transactionType == "বিক্রয়" }.sumOf { it.amountBdt }
+    val totalPaid = transactions.sumOf { it.paidBdt }
+    val totalDue = transactions.sumOf { it.dueBdt }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f).padding(8.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = customer.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(text = customer.phone, fontSize = 12.sp, color = Color.Gray)
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stats Cards
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LedgerStatCard("মোট ক্রয়", "৳ ${String.format("%,.0f", totalPurchased)}", Color(0xFF7D5800), Modifier.weight(1f))
+                    LedgerStatCard("পরিশোধ", "৳ ${String.format("%,.0f", totalPaid)}", Color(0xFF2E7D32), Modifier.weight(1f))
+                    LedgerStatCard("মোট বকেয়া", "৳ ${String.format("%,.0f", totalDue)}", Color(0xFFC62828), Modifier.weight(1f))
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+                Text("লেনদেনের খতিয়ান (Transaction History)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(transactions) { txn ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF9F6)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(txn.itemDescription, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(
+                                        java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(txn.date),
+                                        fontSize = 11.sp,
+                                        color = Color.Gray
+                                    )
+                                    Text(txn.transactionType, fontSize = 10.sp, color = Color(0xFF7D5800))
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("৳ ${String.format("%,.0f", txn.amountBdt)}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    if (txn.dueBdt > 0) {
+                                        Text("বাকি: ৳ ${String.format("%,.0f", txn.dueBdt)}", color = Color(0xFFC62828), fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF765B40))
+                ) {
+                    Text("ফিরে যান", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LedgerStatCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 9.sp, color = Color.Gray)
+            Text(value, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
+        }
+    }
+}
+
+@Composable
+fun AddSupplierDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var contact by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন মহাজন (Supplier) যোগ করুন", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("নাম") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("যোগাযোগ (ফোন)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("ঠিকানা") }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = { Button(onClick = { if (name.isNotBlank()) onConfirm(name, contact, address) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
+}
+
+@Composable
+fun AddArtisanDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var contact by remember { mutableStateOf("") }
+    var specialty by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন কারিগর যোগ করুন", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("নাম") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("যোগাযোগ (ফোন)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = specialty, onValueChange = { specialty = it }, label = { Text("বিশেষত্ব (Specialty)") }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = { Button(onClick = { if (name.isNotBlank()) onConfirm(name, contact, specialty) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
+}
+
+@Composable
+fun AddEmployeeDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, Double) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var salary by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন কর্মচারী যোগ করুন", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("নাম") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("পদবী (Role)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("ফোন") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = salary, 
+                    onValueChange = { salary = it }, 
+                    label = { Text("বেতন (৳)") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { if (name.isNotBlank()) onConfirm(name, role, phone, salary.toDoubleOrNull() ?: 0.0) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
+}
+
+@Composable
+fun AddBranchDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var loc by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন শাখা যোগ করুন", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("শাখার নাম") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = loc, onValueChange = { loc = it }, label = { Text("অবস্থান") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("ফোন") }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = { Button(onClick = { if (name.isNotBlank()) onConfirm(name, loc, phone) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
+}
+
+@Composable
+fun AddBankAccountDialog(onDismiss: () -> Unit, onConfirm: (String, String, Double) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var no by remember { mutableStateOf("") }
+    var balance by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন ব্যাংক একাউন্ট যোগ করুন", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("ব্যাংকের নাম") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = no, onValueChange = { no = it }, label = { Text("একাউন্ট নম্বর") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = balance, 
+                    onValueChange = { balance = it }, 
+                    label = { Text("বর্তমান ব্যালেন্স (৳)") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { if (name.isNotBlank()) onConfirm(name, no, balance.toDoubleOrNull() ?: 0.0) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
+}
+
+@Composable
+fun AddBusinessAccountDialog(onDismiss: () -> Unit, onConfirm: (String, String, Double, String) -> Unit) {
+    var type by remember { mutableStateOf("Expense") }
+    var category by remember { mutableStateOf("Rent") }
+    var amount by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+
+    val categories = listOf("Salary", "Rent", "Utility", "Sale", "Investment", "Others")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("নতুন আয়-ব্যয় এন্ট্রি", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    FilterChip(selected = type == "Income", onClick = { type = "Income" }, label = { Text("আয়") })
+                    FilterChip(selected = type == "Expense", onClick = { type = "Expense" }, label = { Text("ব্যয়") })
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("বিভাগ নির্বাচন করুন:", fontSize = 12.sp)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(categories) {
+                        FilterChip(selected = category == it, onClick = { category = it }, label = { Text(it) })
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = amount, 
+                    onValueChange = { amount = it }, 
+                    label = { Text("পরিমাণ (৳)") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("মন্তব্য (ঐচ্ছিক)") }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = { Button(onClick = { if (amount.isNotBlank()) onConfirm(type, category, amount.toDoubleOrNull() ?: 0.0, notes) }) { Text("সংরক্ষণ করুন") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("বাতিল") } }
+    )
 }

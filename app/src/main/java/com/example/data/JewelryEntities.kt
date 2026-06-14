@@ -27,6 +27,7 @@ data class InventoryItem(
     val paidBdt: Double = 0.0,
     val dueBdt: Double = 0.0,
     val tags: String = "", // Comma-separated tags, e.g., "vintage, earrings, gold"
+    val barcode: String? = null,
     val notes: String,
     val imageBase64: String? = null, // Easy base64 storage
     val isSold: Boolean = false,
