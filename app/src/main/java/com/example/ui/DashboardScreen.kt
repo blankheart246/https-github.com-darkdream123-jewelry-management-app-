@@ -48,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.Customer
 import com.example.data.InventoryItem
 import com.example.data.Transaction
+import com.example.ui.theme.UserTheme
 import com.example.util.GoogleSignInHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.firebase.auth.FirebaseUser
@@ -94,7 +95,7 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
     var showAddBusinessAccountDialog by remember { mutableStateOf(false) }
 
     val isOffline by viewModel.isOffline.collectAsState()
-    val isDark by viewModel.isDarkMode.collectAsState()
+    val appTheme by viewModel.appTheme.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
     val isSyncing by viewModel.syncing.collectAsState()
 
@@ -195,7 +196,7 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                             }
                         }
                         IconButton(onClick = { showGlobalSearchDialog = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Global Search", tint = Color(0xFF7D5800))
+                            Icon(Icons.Default.Search, contentDescription = "Global Search", tint = MaterialTheme.colorScheme.primary)
                         }
                         
                         if (currentUser != null) {
@@ -203,7 +204,7 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                                 Icon(
                                     imageVector = if (isSyncing) Icons.Default.Sync else Icons.Default.CloudUpload,
                                     contentDescription = "Sync Data",
-                                    tint = if (isSyncing) Color(0xFF7D5800) else Color.Gray
+                                    tint = if (isSyncing) MaterialTheme.colorScheme.primary else Color.Gray
                                 )
                             }
                         }
@@ -237,13 +238,13 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                                 Icon(
                                     imageVector = Icons.Default.AccountCircle,
                                     contentDescription = "Login",
-                                    tint = Color(0xFF7D5800)
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
 
                         IconButton(onClick = { showSettingsDialog = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color(0xFF7D5800))
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -5092,8 +5093,46 @@ fun GlobalSearchDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun ThemeOption(
+    theme: UserTheme,
+    label: String,
+    color: Color,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(
+                    width = if (isSelected) 3.dp else 1.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (theme == UserTheme.LIGHT) Color.Black else Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
 fun SettingsDialog(viewModel: JewelryViewModel, onDismiss: () -> Unit) {
-    val isDark by viewModel.isDarkMode.collectAsState()
+    val appTheme by viewModel.appTheme.collectAsState()
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(24.dp),
@@ -5109,24 +5148,20 @@ fun SettingsDialog(viewModel: JewelryViewModel, onDismiss: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                Row(
+                Text("পছন্দসই থিম নির্বাচন করুন", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("ডার্ক মোড (Dark Mode)")
-                    }
-                    Switch(
-                        checked = isDark,
-                        onCheckedChange = { viewModel.toggleTheme() }
-                    )
+                    ThemeOption(UserTheme.LIGHT, "Light", Color(0xFFFCF8F8), appTheme == UserTheme.LIGHT) { viewModel.setTheme(UserTheme.LIGHT) }
+                    ThemeOption(UserTheme.BLACK, "Black", Color(0xFF000000), appTheme == UserTheme.BLACK) { viewModel.setTheme(UserTheme.BLACK) }
+                    ThemeOption(UserTheme.BLUE, "Blue", Color(0xFF004BA0), appTheme == UserTheme.BLUE) { viewModel.setTheme(UserTheme.BLUE) }
+                    ThemeOption(UserTheme.GREEN, "Green", Color(0xFF005005), appTheme == UserTheme.GREEN) { viewModel.setTheme(UserTheme.GREEN) }
+                    ThemeOption(UserTheme.RED, "Red", Color(0xFF7F0000), appTheme == UserTheme.RED) { viewModel.setTheme(UserTheme.RED) }
+                    ThemeOption(UserTheme.PURPLE, "Purple", Color(0xFF4A148C), appTheme == UserTheme.PURPLE) { viewModel.setTheme(UserTheme.PURPLE) }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))

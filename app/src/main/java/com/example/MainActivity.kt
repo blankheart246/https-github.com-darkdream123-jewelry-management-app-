@@ -143,8 +143,8 @@ class MainActivity : ComponentActivity() {
     }
 
     setContent {
-      val isDark by viewModel.isDarkMode.collectAsState(initial = false)
-      MyApplicationTheme(darkTheme = isDark) {
+      val appTheme by viewModel.appTheme.collectAsState()
+      MyApplicationTheme(theme = appTheme) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
           DashboardScreen(
             viewModel = viewModel,

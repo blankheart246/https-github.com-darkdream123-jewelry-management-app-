@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "337885555948",
+    "project_id": "gen-lang-client-0198576161",
+    "storage_bucket": "gen-lang-client-0198576161.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337885555948:android:76595e69898f6445d0c9c9",
+        "android_client_info": {
+          "package_name": "com.company.swarnalyshilpaloy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "337885555948-u1rfbkrg8im45ghugn5pngog62e53pcn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6ywO7LgmedjE5mMP5DPl6w1ejpB0LVf8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "337885555948-u1rfbkrg8im45ghugn5pngog62e53pcn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -18,4 +18,20 @@ val SoftWhite = Color(0xFFFFFFFF)
 val RedHighlight = Color(0xFFBA1A1A)       // Elegant warning ruby
 val GreenSuccess = Color(0xFF1B6B2C)       // Elegant organic growth green
 
+// --- Specialized Themes ---
+val PureBlack = Color(0xFF000000)
+val DarkGrey = Color(0xFF121212)
+
+val SolidBlue = Color(0xFF004BA0)
+val OnSolidBlue = Color(0xFFD1E4FF)
+
+val SolidGreen = Color(0xFF005005)
+val OnSolidGreen = Color(0xFFC8FFC0)
+
+val SolidRed = Color(0xFF7F0000)
+val OnSolidRed = Color(0xFFFFDADA)
+
+val SolidPurple = Color(0xFF4A148C)
+val OnSolidPurple = Color(0xFFF3E5F5)
+
 

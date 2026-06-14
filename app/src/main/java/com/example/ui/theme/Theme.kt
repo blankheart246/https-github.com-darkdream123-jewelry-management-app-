@@ -43,12 +43,77 @@ private val LightColorScheme =
     error = RedHighlight
   )
 
+enum class UserTheme {
+    LIGHT, BLACK, BLUE, GREEN, RED, PURPLE
+}
+
+private val BlackColorScheme = darkColorScheme(
+    primary = Color.White,
+    onPrimary = PureBlack,
+    background = PureBlack,
+    surface = DarkGrey,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    secondary = Color.Gray,
+    onSecondary = Color.White
+)
+
+private val BlueColorScheme = darkColorScheme(
+    primary = OnSolidBlue,
+    onPrimary = SolidBlue,
+    background = SolidBlue,
+    surface = Color(0xFF003060),
+    onBackground = OnSolidBlue,
+    onSurface = OnSolidBlue,
+    secondary = OnSolidBlue,
+    onSecondary = SolidBlue
+)
+
+private val GreenColorScheme = darkColorScheme(
+    primary = OnSolidGreen,
+    onPrimary = SolidGreen,
+    background = SolidGreen,
+    surface = Color(0xFF003300),
+    onBackground = OnSolidGreen,
+    onSurface = OnSolidGreen,
+    secondary = OnSolidGreen,
+    onSecondary = SolidGreen
+)
+
+private val RedColorScheme = darkColorScheme(
+    primary = OnSolidRed,
+    onPrimary = SolidRed,
+    background = SolidRed,
+    surface = Color(0xFF500000),
+    onBackground = OnSolidRed,
+    onSurface = OnSolidRed,
+    secondary = OnSolidRed,
+    onSecondary = SolidRed
+)
+
+private val PurpleColorScheme = darkColorScheme(
+    primary = OnSolidPurple,
+    onPrimary = SolidPurple,
+    background = SolidPurple,
+    surface = Color(0xFF311060),
+    onBackground = OnSolidPurple,
+    onSurface = OnSolidPurple,
+    secondary = OnSolidPurple,
+    onSecondary = SolidPurple
+)
+
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = false, // Boot into Clean Minimalism's graceful sand-white style by default
-  dynamicColor: Boolean = false, // Consistent artisanal brand aesthetic
-  content: @Composable () -> Unit,
+    theme: UserTheme = UserTheme.LIGHT,
+    content: @Composable () -> Unit,
 ) {
-  val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    val colorScheme = when (theme) {
+        UserTheme.LIGHT -> LightColorScheme
+        UserTheme.BLACK -> BlackColorScheme
+        UserTheme.BLUE -> BlueColorScheme
+        UserTheme.GREEN -> GreenColorScheme
+        UserTheme.RED -> RedColorScheme
+        UserTheme.PURPLE -> PurpleColorScheme
+    }
+    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }

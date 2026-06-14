@@ -26,6 +26,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.ui.theme.UserTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -1277,19 +1278,20 @@ class JewelryViewModel(
         }
     }
 
-    // --- Theme & Dark Mode ---
-    private val _isDarkMode = MutableStateFlow(loadThemePreference())
-    val isDarkMode: StateFlow<Boolean> = _isDarkMode
+    // --- Theme & Theme Mode ---
+    private val _appTheme = MutableStateFlow(loadThemePreference())
+    val appTheme: StateFlow<UserTheme> = _appTheme
 
-    private fun loadThemePreference(): Boolean {
+    private fun loadThemePreference(): UserTheme {
         val prefs = context.getSharedPreferences("shornoly_prefs", android.content.Context.MODE_PRIVATE)
-        return prefs.getBoolean("dark_mode", false)
+        val themeName = prefs.getString("app_theme", UserTheme.LIGHT.name) ?: UserTheme.LIGHT.name
+        return try { UserTheme.valueOf(themeName) } catch (e: Exception) { UserTheme.LIGHT }
     }
 
-    fun toggleTheme() {
-        _isDarkMode.value = !_isDarkMode.value
+    fun setTheme(theme: UserTheme) {
+        _appTheme.value = theme
         val prefs = context.getSharedPreferences("shornoly_prefs", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("dark_mode", _isDarkMode.value).apply()
+        prefs.edit().putString("app_theme", theme.name).apply()
     }
 
     // --- AI Chat Feature ---
@@ -1298,6 +1300,31 @@ class JewelryViewModel(
     val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages
     private val _isChatLoading = MutableStateFlow(false)
     val isChatLoading: StateFlow<Boolean> = _isChatLoading
+
+    private val SHORNOLY_ORCHESTRATOR_PROMPT = """
+        # ROLE & CONTEXT
+        You are the master full-stack AI engine and background data orchestrator for "Shornoly" (স্বর্ণালি শিল্পালয়), a production-grade Jewelry Shop Management application in Bangladesh.
+
+        # REPOSITORY SCHEMA & ENTITY CONSTRAINTS
+        Map structured data extraction into these exact layers:
+        1. InventoryItem: { "id": Long, "title": String, "itemType": "Ring"|"Necklace"|"Bracelet"|"Bala"|"Chain"|"Earring"|"Bangels", "karat": "18K"|"21K"|"22K"|"24K", "weightGrams": Double, "valueBdt": Double, "isSold": Boolean, "imagePath": String? }
+        2. Customer: { "id": Long, "name": String, "phone": String, "notes": String }
+        3. TransactionInvoice: { "invoiceId": String, "customerId": Long, "itemId": Long, "salePriceBdt": Double, "paymentMethod": "Cash"|"Bkash"|"Card", "dateTimestamp": Long }
+
+        # DUAL-STATE OPERATIONAL LOGIC
+        - Current Status: [NETWORK_STATE: %s, BAJUS_GOLD_RATE_22K: %s]
+        - Current Shop: %s
+
+        # CHIEF CORE TASKS
+        TASK A: Conversational Notebook Parsing. Convert messy inputs (written or voice notes) into valid JSON matching the schema. Translate Bengali terms (যেমন: আংটি, ২২ ক্যারেট) but preserve titles in original script.
+        TASK B: Dynamic Pricing & Invoicing. If a sale is reported, calculate gold value using weight and the rate provided. Link InventoryItem to Customer.
+        TASK C: Strategic Business Intelligence. Provide actionable operational steps regarding gold hedging or reinvestment.
+
+        # STRICT OUTPUT FORMATTING RULES
+        1. Output data mutations strictly as valid JSON inside a code block: ```json [DATA] ```
+        2. If error, return: { "error": "MISSING_CRITICAL_FIELD_NAME" }.
+        3. Keep Bengali explanations warm and professional.
+    """.trimIndent()
 
     fun sendChatMessage(input: String) {
         if (input.isBlank()) return
@@ -1308,25 +1335,36 @@ class JewelryViewModel(
         viewModelScope.launch {
             try {
                 val apiKey = BuildConfig.GEMINI_API_KEY
+                val netState = if (isOffline.value) "OFFLINE" else "ONLINE"
+                val goldRate = businessConfig.value.goldRate22K
+                val shopName = businessConfig.value.shopName
+
                 if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY" || apiKey == "PLACEHOLDER") {
-                    // Quick Bengali localized fallback logic
                     kotlinx.coroutines.delay(1000)
                     val response = getOfflineChatResponse(input)
                     _chatMessages.value = _chatMessages.value + ChatMessage(response, "model")
                     return@launch
                 }
 
-                val prompt = "You are a specialized Jewelry Shop AI Assistant ($input). Help the user with their business questions, stock management, and customer relations. Use the context of a jewelry business in Bangladesh. Current shop name: ${businessConfig.value.shopName}"
+                val systemPrompt = SHORNOLY_ORCHESTRATOR_PROMPT.format(netState, goldRate, shopName)
+                val fullPrompt = "$systemPrompt\n\nUser Input: $input\n\nRelevant Context:\n- Inventory Size: ${inventoryItems.value.size}\n- Customer Count: ${customers.value.size}"
+
                 val response = GeminiClient.service.generateContent(
                     model = "gemini-1.5-flash",
                     apiKey = apiKey,
                     request = GeminiRequest(
-                        contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = prompt)))),
+                        contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = fullPrompt)))),
                         generationConfig = GeminiGenerationConfig(temperature = 0.7)
                     )
                 )
                 val reply = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "কোনো উত্তর পাওয়া যায়নি।"
                 _chatMessages.value = _chatMessages.value + ChatMessage(reply, "model")
+                
+                // If the reply contains JSON, we could potentially auto-process it here or in the UI
+                if (reply.contains("```json")) {
+                    // Logic to extract JSON and potentially suggest a record update
+                }
+
             } catch (e: Exception) {
                 _chatMessages.value = _chatMessages.value + ChatMessage("সার্ভারে ত্রুটি: ${e.localizedMessage}", "model")
             } finally {
