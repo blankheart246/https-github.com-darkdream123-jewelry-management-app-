@@ -1,0 +1,6 @@
+{
+  "name": "স্বর্ণালি শিল্পালয়",
+  "description": "Manage your jewelry stock and customer records locally, featuring AI-powered search and image analysis with Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
