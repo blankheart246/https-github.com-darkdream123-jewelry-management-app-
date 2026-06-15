@@ -2,7 +2,7 @@
 
 ## Project Information
 
-**App Name:** স্বর্ণালি শিল্পালয় (Swarnaly Shilpaloy)  
+**App Name:** स्वर्णालي शिल्पालय (Swarnaly Shilpaloy)  
 **Package:** com.company.swarnalyshilpaloy  
 **Version:** 1.0  
 **Build Code:** 1  
@@ -56,7 +56,7 @@ Download from GitHub Actions artifacts.
 
 ---
 
-## 📲 Installation on Android Device
+## 📱 Installation on Android Device
 
 ### Method 1: Direct APK Installation
 1. Enable **Unknown Sources** in Android Settings:
@@ -185,7 +185,7 @@ https://github.com/blankheart246/https-github.com-darkdream123-jewelry-managemen
 
 ## ✅ Build Status
 
-**Last Build:** $(date)  
+**Last Build:** Now  
 **Status:** ✓ SUCCESSFUL  
 **APK Ready:** Yes  
 **Installation:** Ready for Android 7.0+ devices  

@@ -126,7 +126,7 @@ The app requires a Gemini API key:
 
 ### Verify Installation
 1. Find app in App Drawer
-2. App icon shows "স्वर्णालि" or jewelry icon
+2. App icon shows "स्वर्णालि" or jewelry icon
 3. Tap to open
 4. Should load without errors
 
@@ -241,4 +241,4 @@ adb uninstall com.company.swarnalyshilpaloy
 
 ---
 
-**Happy Jewelry Management! 💍✨**
+**Happy Jewelry Management! 💎✨**

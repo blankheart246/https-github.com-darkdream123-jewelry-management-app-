@@ -1,7 +1,7 @@
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                    JEWELRY MANAGEMENT APP - BUILD INSTRUCTIONS                ║
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    JEWELRY MANAGEMENT APP - BUILD INSTRUCTIONS                 ║
 ║                          स्वर्णालि शिल्पालय (Swarnaly)                        ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╚═══════════════════════════════════════════════════════════════════════════════╝
 
 📱 PROJECT DETAILS
 ==================
@@ -41,10 +41,10 @@ UI Framework: Jetpack Compose
    - APK available in Actions Artifacts
    - Auto-signed with debug keystore
 
-📥 APK INSTALLATION
+📮 APK INSTALLATION
 ====================
 
-STEP 1: Enable Unknown Sources
+STEP 1: Enable Installation from Unknown Sources
 - Settings → Security → Unknown Sources → ON
 
 STEP 2: Download APK
