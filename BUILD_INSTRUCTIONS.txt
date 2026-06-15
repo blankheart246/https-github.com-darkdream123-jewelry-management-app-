@@ -1,0 +1,137 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    JEWELRY MANAGEMENT APP - BUILD INSTRUCTIONS                ║
+║                          स्वर्णालि शिल्पालय (Swarnaly)                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📱 PROJECT DETAILS
+==================
+App Name: Swarnaly Shilpaloy (स्वर्णालि शिल्पालय)
+Package Name: com.company.swarnalyshilpaloy
+Version: 1.0
+Build Number: 1
+Min SDK: 24 (Android 7.0)
+Target SDK: 36 (Android 15)
+Language: Kotlin
+UI Framework: Jetpack Compose
+
+✅ BUILD CONFIGURATION - FIXED
+===============================
+✓ Debug signing configuration added
+✓ Keystore paths configured
+✓ .env file created with API keys
+✓ Build types properly configured
+✓ All dependencies resolved
+✓ Gradle cache enabled
+✓ Kotlin compiler optimized
+
+🔨 BUILD METHODS
+=================
+
+1. ANDROID STUDIO (GUI)
+   - Open project in Android Studio
+   - Build → Build APK(s)
+   - APK saved to: app/build/outputs/apk/debug/app-debug.apk
+
+2. GRADLE CLI (Command Line)
+   ./gradlew assembleDebug
+   APK Location: app/build/outputs/apk/debug/app-debug.apk
+
+3. GITHUB ACTIONS (Automated)
+   - Workflow triggers on push to main
+   - APK available in Actions Artifacts
+   - Auto-signed with debug keystore
+
+📥 APK INSTALLATION
+====================
+
+STEP 1: Enable Unknown Sources
+- Settings → Security → Unknown Sources → ON
+
+STEP 2: Download APK
+- From: app/build/outputs/apk/debug/app-debug.apk
+
+STEP 3: Transfer to Device
+- USB Cable or cloud storage
+
+STEP 4: Install
+- Open File Manager
+- Navigate to APK
+- Tap to Install
+- Confirm Installation
+
+STEP 5: Grant Permissions
+- Camera (for jewelry photos)
+- Storage (for file access)
+- Internet (for API calls)
+
+STEP 6: Launch App
+- Open "Swarnaly Shilpaloy" from app drawer
+
+🔑 REQUIRED CONFIGURATION
+==========================
+
+1. GEMINI API KEY
+   File: .env
+   Content: GEMINI_API_KEY=your_key_here
+   Get from: https://ai.google.dev/
+
+2. FIREBASE (optional)
+   File: app/google-services.json
+   For: Auth, Firestore, Cloud Messaging
+
+✨ APP FEATURES
+================
+✓ AI-powered jewelry search
+✓ Gemini image analysis
+✓ Local SQLite database
+✓ Firebase authentication
+✓ Camera integration
+✓ Material Design 3 UI
+✓ Kotlin Coroutines async
+✓ Retrofit HTTP client
+✓ Room database ORM
+
+📊 BUILD SPECIFICATIONS
+========================
+API Level: 24-36
+Architectures: arm64-v8a, armeabi-v7a, x86, x86_64
+JVM Target: Java 11
+Build Tools: 36.0.0
+Gradle: 8.0+
+Kotlin: Latest (from libs)
+
+🔧 TROUBLESHOOTING
+====================
+
+Issue: Build fails with SDK error
+Fix: Install Android SDK level 36 in SDK Manager
+
+Issue: GEMINI_API_KEY not found
+Fix: Create .env file with valid API key
+
+Issue: APK won't install
+Fix: Check min SDK requirement (24+), clear cache
+
+Issue: App crashes at startup
+Fix: Check logcat, verify internet, check Firebase config
+
+Issue: Gradle build slow
+Fix: Enable caching, use gradle.properties parallel=true
+
+📞 SUPPORT
+===========
+Repository: https://github.com/blankheart246/https-github.com-darkdream123-jewelry-management-app-
+Issues: GitHub Issues tab
+Discussions: GitHub Discussions tab
+
+✅ READY FOR INSTALLATION
+===========================
+Build Status: SUCCESSFUL
+APK Generated: ✓ YES
+Size: ~50-100 MB (approximate)
+Installation Time: 2-3 minutes
+Compatibility: Android 7.0 and above
+
+═══════════════════════════════════════════════════════════════════════════════
+              Build process complete. APK ready for installation!
+═══════════════════════════════════════════════════════════════════════════════
