@@ -65,7 +65,7 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
     val transactions by viewModel.transactions.collectAsState()
     val branches by viewModel.branches.collectAsState()
 
-    var activeTab by remember { mutableStateOf("home") } // "home", "catalog", "management", "finance", "customers"
+    var activeTab by remember { mutableStateOf("home") } // "home", "catalog", "management", "finance", "terminal", "customers"
 
     // Dynamic Business Config State
     val businessConfig by viewModel.businessConfig.collectAsState()
@@ -411,6 +411,42 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                         )
                     }
 
+                    // Item: Terminal (Secure Custom CLI)
+                    val isTerminal = activeTab == "terminal"
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null,
+                                onClick = { activeTab = "terminal" }
+                            )
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (isTerminal) Color(0xFFFFDDB3) else Color.Transparent)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Code,
+                                contentDescription = "Terminal",
+                                tint = if (isTerminal) Color(0xFF291800) else Color(0xFF504539),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "CLI",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isTerminal) Color(0xFF291800) else Color(0xFF504539)
+                        )
+                    }
+
                     // Item 3: Clients
                     val isCustomers = activeTab == "customers"
                     Column(
@@ -503,6 +539,12 @@ fun DashboardScreen(viewModel: JewelryViewModel, modifier: Modifier = Modifier) 
                     viewModel = viewModel,
                     onAddBankAccount = { showAddBankAccountDialog = true },
                     onAddBusinessAccount = { showAddBusinessAccountDialog = true }
+                )
+                "terminal" -> TerminalTabContent(
+                    viewModel = viewModel,
+                    customerCount = customers.size,
+                    inventoryCount = inventoryItems.size,
+                    transactionCount = transactions.size
                 )
                 "customers" -> CustomersTabContent(
                     viewModel = viewModel,
