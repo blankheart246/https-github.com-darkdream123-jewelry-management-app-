@@ -1,0 +1,75 @@
+name: Client Requirement Intake
+description: Capture a new client requirement for scoped delivery.
+title: "[Client] <business-name> - <requested-solution>"
+labels:
+  - client-intake
+body:
+  - type: input
+    id: client_name
+    attributes:
+      label: Client name
+      placeholder: e.g., ABC Diagnostic Center
+    validations:
+      required: true
+
+  - type: dropdown
+    id: niche
+    attributes:
+      label: Niche
+      options:
+        - Doctor/Diagnostic/Hospital
+        - Salon
+        - Gym
+        - Restaurant
+        - Inventory/General Business
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: business_problem
+    attributes:
+      label: Business problem
+      description: What exact problem does the client want to solve?
+      placeholder: Current process, pain points, expected outcome
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: required_modules
+    attributes:
+      label: Required modules
+      options:
+        - label: Landing page
+        - label: Dashboard/Admin panel
+        - label: Booking/Appointment
+        - label: Inventory
+        - label: Billing/Invoice
+        - label: Reporting
+        - label: Mobile app
+
+  - type: textarea
+    id: scope_notes
+    attributes:
+      label: Scope notes
+      placeholder: Must-have vs nice-to-have
+
+  - type: input
+    id: budget
+    attributes:
+      label: Budget range
+      placeholder: e.g., BDT 20,000 - 40,000
+
+  - type: input
+    id: deadline
+    attributes:
+      label: Target delivery date
+      placeholder: YYYY-MM-DD
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: What conditions must be true for client sign-off?
+    validations:
+      required: true
