@@ -8,6 +8,14 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/b4928be2-8589-456e-800a-4376b23dbd60
 
+## Agency Execution Assets (Bangla)
+
+For implementing an agency-focused execution workflow, see:
+
+- [`docs/AGENCY_IMPLEMENTATION_BN.md`](docs/AGENCY_IMPLEMENTATION_BN.md)
+- [`.github/ISSUE_TEMPLATE/client-requirement.yml`](.github/ISSUE_TEMPLATE/client-requirement.yml)
+- [`.github/ISSUE_TEMPLATE/feature-delivery.yml`](.github/ISSUE_TEMPLATE/feature-delivery.yml)
+
 ## Run Locally
 
 **Prerequisites:**  [Android Studio](https://developer.android.com/studio)

@@ -1,0 +1,55 @@
+name: Feature Delivery Task
+description: Plan and deliver one feature from a client requirement.
+title: "[Feature] <module> for <client/business>"
+labels:
+  - feature
+body:
+  - type: input
+    id: source_issue
+    attributes:
+      label: Source client requirement issue
+      placeholder: e.g., #12
+    validations:
+      required: true
+
+  - type: input
+    id: module_name
+    attributes:
+      label: Module name
+      placeholder: e.g., Appointment Booking
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User story
+      placeholder: As a <user>, I want <goal> so that <value>
+    validations:
+      required: true
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: List exact output for this feature.
+      placeholder: UI screen, API endpoint, database table, validation rules
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: definition_of_done
+    attributes:
+      label: Definition of done
+      options:
+        - label: Scope implemented
+        - label: Tested locally
+        - label: Pull request created
+        - label: Preview/demo shared
+        - label: Documentation updated
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / blockers
+      placeholder: Dependencies, access issues, unclear requirement
